@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Séquenceur de son - Podcast Console</title>
+    <style>
+        :root {
+            --bg-color: #e0e0e0;
+            --console-bg: #2b2d31;
+            --panel-bg: #1e1f22;
+            --accent-neon: #00ffcc;
+            --text-light: #f2f3f5;
+            --text-muted: #949ba4;
+        }
+
+        body { 
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            background: var(--bg-color); 
+            color: var(--text-light); 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0; 
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* Boîtier principal style console matérielle */
+        .console-hardware {
+            background: var(--console-bg);
+            border-radius: 4px;
+            padding: 30px;
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                inset 0 1px 0 rgba(255,255,255,0.1);
+            border: 2px solid #3f4248;
+            position: relative;
+            max-width: 650px;
+            width: 100%;
+        }
+
+        /* Petites vis industrielles décoratives aux 4 coins */
+        .console-hardware::before, .console-hardware::after {
+            content: "⊕";
+            position: absolute;
+            color: #4e5058;
+            font-size: 14px;
+        }
+        .console-hardware::before { top: 8px; left: 8px; }
+        .console-hardware::after { bottom: 8px; right: 8px; }
+
+        h1 { 
+            font-size: 1.1rem; 
+            text-transform: uppercase; 
+            letter-spacing: 2px; 
+            color: var(--text-muted); 
+            margin: 0 0 20px 0;
+            text-align: left;
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        h1 span { font-size: 0.7rem; color: #4e5058; }
+
+        /* Tranche supérieure : Commandes & Connectique */
+        .top-deck {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--panel-bg);
+            padding: 15px 20px;
+            border-radius: 4px;
+            margin-bottom: 25px;
+            border: 1px solid #111;
+        }
+
+        .status-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-led {
+            width: 8px;
+            height: 8px;
+            background: #ff4444;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #ff4444;
+            transition: 0.3s;
+        }
+
+        .status-text {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .btn-connect { 
+            background: #3f4248; 
+            color: var(--text-light); 
+            border: 1px solid #585b63; 
+            padding: 8px 16px; 
+            font-size: 11px; 
+            font-weight: bold; 
+            border-radius: 3px; 
+            cursor: pointer; 
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: 0.2s; 
+        }
+        .btn-connect:hover { background: #4e5058; border-color: #fff; }
+
+        /* Section Boutons Audio Master */
+        .master-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--panel-bg);
+            padding: 15px 20px;
+            border-radius: 4px;
+            margin-bottom: 25px;
+            border: 1px solid #111;
+        }
+
+        .btn-control { 
+            border: 1px solid #111; 
+            padding: 10px 18px; 
+            font-size: 11px; 
+            font-weight: bold; 
+            border-radius: 3px; 
+            cursor: pointer; 
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: #2b2d31;
+        }
+        .btn-stop { border-bottom: 3px solid #cc3333; }
+        .btn-stop:hover { background: #ff4444; color: #fff; }
+        .btn-pause { border-bottom: 3px solid #cc8800; }
+        .btn-pause:hover { background: #ffaa00; color: #fff; }
+        
+        .volume-global-container { 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            margin-left: auto;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+        }
+        .volume-slider { 
+            cursor: pointer; 
+            accent-color: #fff;
+            background: #111;
+            height: 4px;
+            border-radius: 2px;
+            outline: none;
+        }
+
+        /* Grille des Pads façon Échantillonneur */
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(4, 1fr); 
+            gap: 15px; 
+        }
+        
+        .pad { 
+            background: #18191c; 
+            border-radius: 4px; 
+            border: 1px solid #111; 
+            aspect-ratio: 1 / 1.15;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: space-between; 
+            position: relative; 
+            box-sizing: border-box; 
+            padding: 12px 10px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+            cursor: pointer;
+        }
+
+        .pad-header { 
+            width: 100%; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+        .pad-num { 
+            font-size: 0.75rem; 
+            font-weight: 700; 
+            font-family: monospace;
+            background: #2b2d31;
+            padding: 2px 6px;
+            border-radius: 2px;
+        }
+        
+        .btn-settings { 
+            background: none; 
+            border: none; 
+            color: #4e5058; 
+            cursor: pointer; 
+            font-size: 0.9rem; 
+            padding: 0; 
+        }
+        .btn-settings:hover { color: var(--text-light); }
+        
+        .pad-title { 
+            font-size: 0.7rem; 
+            color: var(--text-light); 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px; 
+            text-align: center; 
+            width: 100%; 
+            font-weight: 600;
+            line-height: 1.2;
+            margin: 10px 0;
+        }
+        
+        .pad-mode-badge { 
+            font-size: 0.55rem; 
+            color: var(--text-muted); 
+            font-weight: 700; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px;
+        }
+        
+        .pad-volume-container { 
+            width: 100%; 
+            display: flex; 
+            align-items: center; 
+            margin-top: 6px; 
+        }
+        .pad-volume-slider { 
+            width: 100%; 
+            height: 2px; 
+            cursor: pointer; 
+            accent-color: var(--text-muted);
+            background: #2b2d31;
+        }
+
+        /* Animations mécaniques et lumineuses (Inspiré de l'image) */
+        .pad.active { 
+            background: #fff !important; 
+            border-color: #fff !important; 
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.8) !important; 
+            transform: scale(0.96); 
+        }
+        .pad.active .pad-num, .pad.active .pad-title, .pad.active .pad-mode-badge { color: #111 !important; }
+        
+        /* Quand le morceau est en cours de lecture : Le pad s'illumine de sa couleur propre */
+        .pad.playing {
+            animation: pulse-border 2s infinite alternate;
+        }
+        .pad.playing .pad-num { background: rgba(0,0,0,0.4); color: #fff !important; }
+        .pad.playing .pad-title, .pad.playing .pad-mode-badge { color: #fff !important; font-weight: 700; }
+
+        /* Fenêtre Modal pour les paramètres (Look épuré) */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 10; }
+        .modal-content { background: var(--panel-bg); padding: 25px; border-radius: 4px; border: 1px solid #3f4248; text-align: left; width: 280px; }
+        .modal-content h3 { margin-top: 0; color: var(--text-light); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #2b2d31; padding-bottom: 10px; }
+        .modal-options { margin: 20px 0; }
+        .modal-options label { display: flex; align-items: center; margin-bottom: 12px; cursor: pointer; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
+        .modal-options input { margin-right: 10px; accent-color: var(--accent-neon); }
+        .btn-close-modal { background: #3f4248; color: var(--text-light); border: 1px solid #585b63; padding: 6px 12px; font-weight: bold; font-size: 10px; border-radius: 2px; cursor: pointer; float: right; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+
+    <div class="console-hardware">
+        <h1>SÉQUENCEUR PODCAST V2 <span>DS1-U2</span></h1>
+
+        <div class="top-deck">
+            <div class="status-container">
+                <div class="status-led" id="statusLed"></div>
+                <div class="status-text" id="statusText">HORS LIGNE</div>
+            </div>
+            <button class="btn-connect" id="connectBtn">Lier la console</button>
+        </div>
+        
+        <div class="master-controls">
+            <button class="btn-control btn-pause" id="pauseBtn">⏸︎ PAUSE</button>
+            <button class="btn-control btn-stop" id="stopBtn">⏹︎ STOP</button>
+            <div class="volume-global-container">
+                <span>VOL. MASTER</span>
+                <input type="range" class="volume-slider" id="globalVolume" min="0" max="1" step="0.05" value="0.8">
+            </div>
+        </div>
+
+        <div class="grid" id="grid">
+            </div>
+    </div>
+
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <h3 id="modalTargetTitle">OPTIONS DU PAD</h3>
+            <div class="modal-options">
+                <label><input type="radio" name="playMode" value="oneshot" id="modeOneshot"> 🎵 ONE-SHOT</label>
+                <label><input type="radio" name="playMode" value="loop" id="modeLoop"> 🔁 LOOP</label>
+            </div>
+            <button class="btn-close-modal" id="closeModalBtn">APPLIQUER</button>
+        </div>
+    </div>
+
+    <script>
+        const configurationPads = [
+            { id: 0, nom: "Applaudissements", couleur: "rgb(0, 102, 255)",  mode: "oneshot", volume: 1 },
+            { id: 1, nom: "Fanfare Victoire",  couleur: "rgb(255, 51, 51)",  mode: "oneshot", volume: 1 },
+            { id: 2, nom: "Gains de Points",   couleur: "rgb(51, 204, 51)",  mode: "oneshot", volume: 1 },
+            { id: 3, nom: "Level Up",         couleur: "rgb(255, 204, 0)",  mode: "oneshot", volume: 1 },
+            { id: 4, nom: "Buzzer Erreur",    couleur: "rgb(204, 0, 204)",  mode: "oneshot", volume: 0.7 },
+            { id: 5, nom: "Rire Moqueur",     couleur: "rgb(0, 204, 204)",  mode: "oneshot", volume: 1 },
+            { id: 6, nom: "Chute / Échec",    couleur: "rgb(255, 102, 0)",  mode: "oneshot", volume: 1 },
+            { id: 7, nom: "Game Over",        couleur: "rgb(153, 51, 255)", mode: "oneshot", volume: 1 },
+            { id: 8, nom: "Boing Ressort",    couleur: "rgb(0, 255, 153)",  mode: "oneshot", volume: 1 },
+            { id: 9, nom: "Laser / Tir",      couleur: "rgb(255, 0, 102)",  mode: "oneshot", volume: 0.8 },
+            { id: 10, nom: "Roulement Tambour",couleur: "rgb(153, 255, 51)", mode: "oneshot", volume: 1 },
+            { id: 11, nom: "Chrono Tic-Tac",  couleur: "rgb(51, 153, 255)", mode: "loop",    volume: 0.9 },
+            { id: 12, nom: "Musique Réflexion",couleur: "rgb(255, 153, 153)",mode: "loop",    volume: 0.6 },
+            { id: 13, nom: "Générique Début",  couleur: "rgb(153, 153, 153)",mode: "oneshot", volume: 0.8 },
+            { id: 14, nom: "Suspense Cardiaque",couleur: "rgb(153, 102, 51)",  mode: "loop",    volume: 1 },
+            { id: 15, nom: "Son Libre 16",     couleur: "rgb(0, 153, 102)",  mode: "oneshot", volume: 1 }
+        ];
+
+        const grid = document.getElementById('grid');
+        const connectBtn = document.getElementById('connectBtn');
+        const statusLed = document.getElementById('statusLed');
+        const statusText = document.getElementById('statusText');
+        const globalVolumeSlider = document.getElementById('globalVolume');
+        const settingsModal = document.getElementById('settingsModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const modalTargetTitle = document.getElementById('modalTargetTitle');
+        
+        let activeModalPadId = null;
+        let audiosActifs = {}; 
+        let globalVolumeValue = 0.8;
+
+        // 1. Initialisation esthétique de la grille matérielle
+        configurationPads.forEach(p => {
+            const pad = document.createElement('div');
+            pad.className = 'pad';
+            pad.id = `pad-${p.id}`;
+            
+            // Appliquer une fine bordure colorée au repos style "bouton éteint mais assigné"
+            pad.style.borderLeft = `3px solid ${p.couleur}`;
+            
+            pad.innerHTML = `
+                <div class="pad-header">
+                    <div class="pad-num" style="color: ${p.couleur}">${p.id + 1}</div>
+                    <button class="btn-settings" data-id="${p.id}">⚙︎</button>
+                </div>
+                <div class="pad-title">${p.nom}</div>
+                <div class="pad-mode-badge" id="badge-${p.id}">${p.mode === 'loop' ? 'LOOP' : '1-SHOT'}</div>
+                <div class="pad-volume-container">
+                    <input type="range" class="pad-volume-slider" data-id="${p.id}" min="0" max="1" step="0.05" value="${p.volume}">
+                </div>
+            `;
+            grid.appendChild(pad);
+            
+            const audioObj = new Audio(`sound${p.id + 1}.mp3`);
+            audiosActifs[p.id] = { audio: audioObj, isPlaying: false };
+        });
+
+        // 2. Gestion des volumes
+        globalVolumeSlider.addEventListener('input', (e) => {
+            globalVolumeValue = parseFloat(e.target.value);
+            configurationPads.forEach(p => recalculerVolumePad(p.id));
+        });
+
+        document.querySelectorAll('.pad-volume-slider').forEach(slider => {
+            slider.addEventListener('input', (e) => {
+                const id = parseInt(e.target.getAttribute('data-id'));
+                configurationPads.find(p => p.id === id).volume = parseFloat(e.target.value);
+                recalculerVolumePad(id);
+            });
+            slider.addEventListener('click', (e) => e.stopPropagation());
+        });
+
+        function recalculerVolumePad(id) {
+            if (audiosActifs[id]) {
+                const config = configurationPads.find(p => p.id === id);
+                audiosActifs[id].audio.volume = config.volume * globalVolumeValue;
+            }
+        }
+
+        // 3. Gestion Menu Options
+        document.querySelectorAll('.btn-settings').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                activeModalPadId = parseInt(btn.getAttribute('data-id'));
+                const config = configurationPads.find(p => p.id === activeModalPadId);
+                modalTargetTitle.innerText = `OPTIONS PAD ${activeModalPadId + 1}`;
+                if (config.mode === 'loop') document.getElementById('modeLoop').checked = true;
+                else document.getElementById('modeOneshot').checked = true;
+                settingsModal.style.display = 'flex';
+            });
+        });
+
+        closeModalBtn.addEventListener('click', () => {
+            if (activeModalPadId !== null) {
+                const config = configurationPads.find(p => p.id === activeModalPadId);
+                const nouveauMode = document.querySelector('input[name="playMode"]:checked').value;
+                config.mode = nouveauMode;
+                document.getElementById(`badge-${activeModalPadId}`).innerText = nouveauMode.toUpperCase();
+                audiosActifs[activeModalPadId].audio.loop = (nouveauMode === 'loop');
+                settingsModal.style.display = 'none';
+                activeModalPadId = null;
+            }
+        });
+
+        // 4. Transport Audio Général
+        document.getElementById('stopBtn').addEventListener('click', () => {
+            Object.keys(audiosActifs).forEach(id => stoppperAudio(id));
+        });
+
+        document.getElementById('pauseBtn').addEventListener('click', (e) => {
+            Object.keys(audiosActifs).forEach(id => {
+                const item = audiosActifs[id];
+                if (item.isPlaying) {
+                    if (item.audio.paused) {
+                        item.audio.play();
+                        e.target.innerText = "⏸︎ PAUSE";
+                    } else {
+                        item.audio.pause();
+                        e.target.innerText = "▶︎ REPRISE";
+                    }
+                }
+            });
+        });
+
+        function stoppperAudio(id) {
+            const item = audiosActifs[id];
+            const padHtml = document.getElementById(`pad-${id}`);
+            if (item && item.isPlaying) {
+                item.audio.pause();
+                item.audio.currentTime = 0;
+                item.isPlaying = false;
+                if (padHtml) {
+                    padHtml.classList.remove('playing');
+                    padHtml.style.backgroundColor = '#18191c';
+                    padHtml.style.boxShadow = 'inset 0 1px 3px rgba(0,0,0,0.5)';
+                }
+            }
+        }
+
+        // 5. Action de déclenchement (Pico WH Link)
+        function declencherAction(id) {
+            const padHtml = document.getElementById(`pad-${id}`);
+            const config = configurationPads.find(p => p.id === id);
+            const item = audiosActifs[id];
+
+            if (!item || !config) return;
+
+            // Flash mécanique blanc
+            if (padHtml) {
+                padHtml.classList.add('active');
+                setTimeout(() => padHtml.classList.remove('active'), 120);
+            }
+
+            if (config.mode === 'loop' && item.isPlaying) {
+                stoppperAudio(id);
+                return;
+            }
+
+            if (config.mode === 'oneshot') {
+                item.audio.pause();
+                item.audio.currentTime = 0;
+            }
+
+            recalculerVolumePad(id);
+            item.audio.loop = (config.mode === 'loop');
+            
+            // Allumage rétroéclairage mat persistant
+            if (padHtml) {
+                padHtml.classList.add('playing');
+                padHtml.style.backgroundColor = config.couleur;
+                padHtml.style.boxShadow = `0 0 25px ${config.couleur}, inset 0 1px 0 rgba(255,255,255,0.2)`;
+            }
+
+            item.isPlaying = true;
+            item.audio.play().catch(e => {
+                console.log(e);
+                stoppperAudio(id);
+            });
+
+            item.audio.onended = () => {
+                if (config.mode === 'oneshot') stoppperAudio(id);
+            };
+        }
+
+        // 6. Web Serial API
+        connectBtn.addEventListener('click', async () => {
+            if (!("serial" in navigator)) { alert("Navigateur non compatible."); return; }
+            try {
+                const port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 115200 });
+                
+                // Changement d'état de la LED virtuelle de la console
+                statusLed.style.background = "#00ffcc";
+                statusLed.style.boxShadow = "0 0 10px #00ffcc";
+                statusText.innerText = "EN LIGNE (PICO)";
+                connectBtn.style.display = "none";
+
+                const textDecoder = new TextDecoderStream();
+                port.readable.pipeTo(textDecoder.writable);
+                const reader = textDecoder.readable.getReader();
+                let buffer = "";
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) { reader.releaseLock(); break; }
+                    if (value) {
+                        buffer += value;
+                        if (buffer.includes("\n")) {
+                            const lignes = buffer.split("\n");
+                            for (let i = 0; i < lignes.length - 1; i++) {
+                                const tId = lignes[i].trim();
+                                if (tId !== "" && !isNaN(tId)) declencherAction(parseInt(tId));
+                            }
+                            buffer = lignes[lignes.length - 1];
+                        }
+                    }
+                }
+            } catch (error) {
+                statusLed.style.background = "#ff4444";
+                statusText.innerText = "ERREUR CONSOLE";
+            }
+        });
+    </script>
+</body>
+</html>
